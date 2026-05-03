@@ -1,0 +1,59 @@
+name: 🤖 Auto‑post – Jardin vertical indoor
+
+# Le workflow s’exécute chaque jour à 06 h UTC (02 h EST / 08 h CET)
+on:
+  schedule:
+    - cron: '0 6 * * *'      # tous les jours à 06 h UTC
+  workflow_dispatch:        # bouton “Run workflow” pour tester à la demande
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write          # autorisation de pousser des commits
+
+    steps:
+      # -------------------------------------------------
+      # 1️⃣  Récupérer le dépôt
+      # -------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # besoin de tout l’historique pour le commit
+
+      # -------------------------------------------------
+      # 2️⃣  Installer Python & dépendances
+      # -------------------------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      # -------------------------------------------------
+      # 3️⃣  Générer l’article (niche = "jardin vertical indoor")
+      # -------------------------------------------------
+      - name: Generate article
+        env:
+          HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
+        run: |
+          python generate_article.py "jardin vertical indoor"
+
+      # -------------------------------------------------
+      # 4️⃣  Injecter les liens d’affiliation
+      # -------------------------------------------------
+      - name: Inject affiliate links
+        run: python inject_affiliates.py
+
+      # -------------------------------------------------
+      # 5️⃣  Commit & push le nouveau post
+      # -------------------------------------------------
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _posts/*.md
+          git commit -m "🤖 New post $(date +%Y-%m-%d)"
+          git push
